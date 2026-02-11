@@ -4,11 +4,8 @@ __pycache__/
 dist/
 build/
 .env
-.venv/
-venv/
-env/
 node_modules/
-.DS_Store
 *.log
-.idea/
-.vscode/
+.DS_Store
+*.pem
+generate_icons.py

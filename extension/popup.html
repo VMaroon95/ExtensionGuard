@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=400">
+  <link rel="stylesheet" href="popup.css">
+  <title>ExtensionGuard</title>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-top">
+        <div class="brand">
+          <div class="shield-icon">🛡️</div>
+          <div>
+            <h1>ExtensionGuard</h1>
+            <span class="status" id="status">Protected ✓</span>
+          </div>
+        </div>
+        <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
+      </div>
+      <div class="settings-panel" id="settingsPanel">
+        <label class="toggle-label">
+          <span>Notifications</span>
+          <input type="checkbox" id="notifToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </header>
+
+    <div class="stats-bar">
+      <div class="stat">
+        <span class="stat-value" id="totalCount">0</span>
+        <span class="stat-label">Monitored</span>
+      </div>
+      <div class="stat safe">
+        <span class="stat-value" id="safeCount">0</span>
+        <span class="stat-label">Safe</span>
+      </div>
+      <div class="stat warning">
+        <span class="stat-value" id="warnCount">0</span>
+        <span class="stat-label">Warnings</span>
+      </div>
+      <div class="stat danger">
+        <span class="stat-value" id="dangerCount">0</span>
+        <span class="stat-label">Dangerous</span>
+      </div>
+    </div>
+
+    <div class="extension-list" id="extensionList">
+      <div class="loading">Scanning extensions...</div>
+    </div>
+
+    <footer>
+      <button class="scan-btn" id="scanBtn">🔍 Scan All Now</button>
+      <span class="last-scan" id="lastScan">Last scanned: never</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

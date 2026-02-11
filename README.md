@@ -1,131 +1,120 @@
-```
-    ╔═══════════════════════════════════════════════════════╗
-    ║                                                       ║
-    ║   🛡️  E X T E N S I O N G U A R D                    ║
-    ║                                                       ║
-    ║   Chrome Extension Security Auditor                   ║
-    ║                                                       ║
-    ╚═══════════════════════════════════════════════════════╝
-```
+# 🛡️ ExtensionGuard
 
-[![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-green.svg)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688.svg)](https://fastapi.tiangolo.com)
-[![GitHub stars](https://img.shields.io/github/stars/VMaroon95/ExtensionGuard?style=social)](https://github.com/VMaroon95/ExtensionGuard)
+**Install. Forget. Stay Safe.**
 
-**Scan any Chrome extension for privacy risks, excessive permissions, and suspicious behavior. Get an instant safety grade from A to F.**
+> 287 Chrome extensions were caught spying on **37 million users**. ExtensionGuard watches your back.
 
 ---
 
-## 🤔 Why ExtensionGuard?
+## The Problem
 
-Browser extensions have deep access to your data — your browsing history, passwords, even your clipboard. Many users install extensions without understanding what they're granting access to.
+Browser extensions have nearly unlimited access to your data — passwords, browsing history, cookies, keystrokes. Most users install extensions without understanding what permissions they're granting. Malicious extensions have compromised millions of users.
 
-ExtensionGuard analyzes any Chrome extension's permissions and gives you:
+## How It Works
 
-- **Safety grade (A–F)** — instant risk assessment
-- **Permission breakdown** — every permission categorized and risk-rated
-- **Plain English explanations** — what each permission actually means for your privacy
-- **Category analysis** — Data Access, Browser Control, Network Access, System Access
+1. **Add to Chrome** — One click install, zero configuration
+2. **Silent Monitoring** — Automatically scans every extension you install or enable
+3. **Instant Alerts** — Desktop notifications when a risky extension is detected
 
-## 📸 Screenshots
+## Features
 
-> _Coming soon — the UI features a clean dark theme with color-coded risk grades._
+- ⚡ **Real-time monitoring** — Scans extensions the moment they're installed
+- 🔒 **100% private** — All analysis happens locally, zero data leaves your browser
+- 🔔 **Smart alerts** — Notifications for dangerous extensions with plain English explanations
+- 📊 **Dashboard** — See all extensions graded A–F with full permission breakdowns
+- 🔄 **Daily re-scans** — Catches extensions that silently update their permissions
+- 🎯 **Zero config** — Install and forget
 
-## 🚀 Quick Start
+## Permission Risk Methodology
 
-### Docker (Recommended)
+| Level | Score | Permissions |
+|-------|-------|-------------|
+| 🔴 Critical | 10 pts | `<all_urls>`, `http://*/*`, `https://*/*`, `webRequest`, `webRequestBlocking`, `debugger`, `proxy` |
+| 🟠 High | 7 pts | `tabs`, `history`, `cookies`, `bookmarks`, `downloads`, `clipboardRead`, `privacy`, `browsingData` |
+| 🟡 Medium | 4 pts | `activeTab`, `storage`, `contextMenus`, `identity`, `webNavigation`, `scripting` |
+| 🟢 Low | 1 pt | `alarms`, `idle`, `power`, `fontSettings`, `notifications` |
 
-```bash
-git clone https://github.com/VMaroon95/ExtensionGuard.git
-cd ExtensionGuard
-docker-compose up
-```
+### Grading Scale
 
-Open [http://localhost:8000](http://localhost:8000) in your browser.
+| Grade | Score Range | Meaning |
+|-------|------------|---------|
+| **A** | 0–5 | Safe |
+| **B** | 6–15 | Low risk |
+| **C** | 16–30 | Moderate risk — notification sent |
+| **D** | 31–50 | High risk — persistent notification |
+| **F** | 51+ | Dangerous — persistent notification |
 
-### Manual Setup
+## Installation
 
-```bash
-git clone https://github.com/VMaroon95/ExtensionGuard.git
-cd ExtensionGuard/backend
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
+### Developer Mode (Now)
 
-Open [http://localhost:8000](http://localhost:8000).
+1. Clone this repo: `git clone https://github.com/VMaroon95/ExtensionGuard.git`
+2. Open Chrome → `chrome://extensions/`
+3. Enable **Developer mode** (top right)
+4. Click **Load unpacked** → select the `extension/` folder
+5. Done! ExtensionGuard is now monitoring your browser
 
-## 🔍 How It Works
+### Chrome Web Store
 
-1. **Input** — Paste a Chrome extension ID or Web Store URL
-2. **Fetch** — ExtensionGuard retrieves the extension's metadata from the Chrome Web Store
-3. **Analyze** — Each permission is mapped to our risk database of 60+ known permissions
-4. **Score** — Permissions are weighted by severity (Critical: 25pts, High: 15pts, Medium: 8pts, Low: 3pts, Minimal: 1pt)
-5. **Grade** — Total risk score maps to a letter grade:
+Coming soon.
 
-| Score | Grade | Meaning |
-|-------|-------|---------|
-| 0–10 | **A** | Excellent — minimal risk |
-| 11–25 | **B** | Good — low risk |
-| 26–50 | **C** | Moderate — review recommended |
-| 51–80 | **D** | Concerning — use with caution |
-| 81–120 | **E** | Dangerous — extensive access |
-| 120+ | **F** | Critical — extreme caution |
-
-### Permission Categories
-
-- 🔍 **Data Access** — Permissions that read your personal data (history, cookies, clipboard)
-- 🌐 **Browser Control** — Permissions that control browser behavior (tabs, notifications, scripts)
-- 📡 **Network Access** — Permissions that monitor or modify network traffic
-- 💻 **System Access** — Permissions that interact with your operating system
-
-## 📡 API Documentation
-
-### `POST /api/audit`
-
-```json
-{
-  "extension_id": "cjpalhdlnbpafiamejdnhcphjbkeiagm"
-}
-```
-
-### `GET /api/audit/{extension_id}`
+## Architecture
 
 ```
-GET /api/audit/cjpalhdlnbpafiamejdnhcphjbkeiagm
+extension/
+├── manifest.json      # Manifest V3 configuration
+├── background.js      # Service worker — event listeners, risk analysis, notifications
+├── popup.html         # Dashboard UI
+├── popup.css          # Dark theme styles
+├── popup.js           # Dashboard logic
+└── icons/             # Shield icons (16, 48, 128px)
 ```
 
-### `GET /api/health`
+- **background.js** — Listens to `chrome.management.onInstalled` and `onEnabled` events, performs permission risk analysis, fires notifications, and stores results
+- **popup.js** — Reads scan results from `chrome.storage.local` and renders the dashboard
 
-Returns `{"status": "healthy"}`.
+## Privacy
 
-### Response Format
+**Zero data leaves your browser. Ever.**
 
-```json
-{
-  "extension_id": "cjpalhdlnbpafiamejdnhcphjbkeiagm",
-  "name": "uBlock Origin",
-  "safety_grade": "C",
-  "grade_description": "Moderate — Some concerning permissions, review recommended",
-  "total_risk_score": 38,
-  "permissions": [
-    {
-      "name": "webRequest",
-      "risk_level": "high",
-      "category": "Network Access",
-      "description": "Monitor web requests",
-      "explanation": "Can observe all network requests your browser makes..."
-    }
-  ],
-  "categories": { ... },
-  "summary": "This extension requests some permissions that warrant review."
-}
-```
+- No servers, no analytics, no tracking
+- All permission analysis runs locally in the service worker
+- Scan results stored only in `chrome.storage.local`
+- No network requests made by ExtensionGuard
+- See [PRIVACY.md](PRIVACY.md) for full policy
 
-## 🤝 Contributing
+## Tech Stack
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+- Chrome Extension Manifest V3
+- Vanilla JavaScript (no dependencies)
+- Chrome Management API
+- Chrome Storage API
+- Chrome Notifications API
+- Chrome Alarms API
 
-## 📄 License
+## Roadmap
 
-[MIT](LICENSE) © Varun Meda
+- [ ] 📧 Weekly email digest of extension safety reports
+- [ ] 🦊 Firefox port (WebExtensions API)
+- [ ] 👥 Team dashboard for enterprise
+- [ ] 🌐 Extension reputation API integration
+- [ ] 📱 Extension update changelog tracking
+- [ ] ⚙️ Custom risk thresholds
+
+## Contributing
+
+Contributions welcome! Please open an issue first to discuss what you'd like to change.
+
+1. Fork the repo
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+MIT License — see [LICENSE](LICENSE)
+
+---
+
+Built by [Varun Meda](https://github.com/VMaroon95) · © 2026
