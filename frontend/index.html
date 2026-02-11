@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExtensionGuard — Chrome Extension Security Auditor</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">🛡️</div>
+            <h1>ExtensionGuard</h1>
+            <p class="tagline">Scan any Chrome extension for privacy risks & excessive permissions</p>
+        </header>
+
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Paste extension ID or Chrome Web Store URL..." autocomplete="off">
+                <button id="scanBtn" onclick="runAudit()">
+                    <span class="btn-text">Scan</span>
+                    <span class="btn-loader hidden">⏳</span>
+                </button>
+            </div>
+            <div class="helper">
+                <button class="helper-toggle" onclick="toggleHelper()">ℹ️ How to find your extension ID</button>
+                <div class="helper-content hidden" id="helperContent">
+                    <ol>
+                        <li>Go to <code>chrome://extensions</code> in your browser</li>
+                        <li>Enable "Developer mode" (top-right toggle)</li>
+                        <li>Copy the 32-character ID under the extension name</li>
+                    </ol>
+                    <p>Or paste the full Chrome Web Store URL — we'll extract the ID automatically.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="error" class="error hidden"></div>
+
+        <div id="results" class="results hidden">
+            <div class="result-header">
+                <div class="extension-info">
+                    <h2 id="extName"></h2>
+                    <p id="extDesc" class="ext-desc"></p>
+                    <span class="ext-id" id="extId"></span>
+                </div>
+                <div class="grade-badge" id="gradeBadge">
+                    <span class="grade-letter" id="gradeLetter"></span>
+                    <span class="grade-label" id="gradeLabel"></span>
+                </div>
+            </div>
+
+            <div class="summary-card" id="summaryCard">
+                <p id="summaryText"></p>
+                <div class="risk-score">Risk Score: <strong id="riskScore"></strong></div>
+            </div>
+
+            <div class="categories-grid" id="categoriesGrid"></div>
+
+            <div class="permissions-section">
+                <h3>📋 Permission Breakdown</h3>
+                <div id="permissionsList"></div>
+                <div id="noPermissions" class="no-perms hidden">
+                    <p>✅ This extension requests no special permissions!</p>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Built with ❤️ by <a href="https://github.com/VMaroon95" target="_blank">Varun Meda</a> — <a href="https://github.com/VMaroon95/ExtensionGuard" target="_blank">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
