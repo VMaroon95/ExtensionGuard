@@ -1,120 +1,189 @@
 # 🛡️ ExtensionGuard
 
-**Install. Forget. Stay Safe.**
+**Your browser's silent bodyguard. 5 security modules. 100% local. Zero data leaves your device.**
 
-> 287 Chrome extensions were caught spying on **37 million users**. ExtensionGuard watches your back.
+> 287 Chrome extensions were caught spying on **37 million users**. Clipboard attacks are rising. Phishing URLs use invisible Unicode tricks. AI chatbots are leaking API keys. ExtensionGuard fights all of it.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-brightgreen.svg)]()
+[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-purple.svg)]()
 
 ---
 
-## The Problem
+## 🚀 Install. Forget. Stay Protected.
 
-Browser extensions have nearly unlimited access to your data — passwords, browsing history, cookies, keystrokes. Most users install extensions without understanding what permissions they're granting. Malicious extensions have compromised millions of users.
+| Step | What Happens |
+|------|-------------|
+| **1. Add to Chrome** | One click install |
+| **2. Forget about it** | ExtensionGuard runs silently in the background |
+| **3. Stay safe** | Get instant alerts when something's wrong |
 
-## How It Works
+---
 
-1. **Add to Chrome** — One click install, zero configuration
-2. **Silent Monitoring** — Automatically scans every extension you install or enable
-3. **Instant Alerts** — Desktop notifications when a risky extension is detected
+## 🔐 5 Security Modules
 
-## Features
+### 🔍 Module 1: Extension Monitor
+Watches every extension you install. Flags risky permissions instantly and detects **Permission Creep** — when extensions silently gain new permissions through updates.
 
-- ⚡ **Real-time monitoring** — Scans extensions the moment they're installed
-- 🔒 **100% private** — All analysis happens locally, zero data leaves your browser
-- 🔔 **Smart alerts** — Notifications for dangerous extensions with plain English explanations
-- 📊 **Dashboard** — See all extensions graded A–F with full permission breakdowns
-- 🔄 **Daily re-scans** — Catches extensions that silently update their permissions
-- 🎯 **Zero config** — Install and forget
+- Real-time monitoring via `chrome.management` API
+- A–F safety grading based on permission risk analysis
+- **Permission Creep alerts** — catches extensions that sneak in dangerous permissions after updates
+- 60+ permissions mapped across 4 risk tiers (Critical / High / Medium / Low)
+- Daily automated re-scans of all installed extensions
 
-## Permission Risk Methodology
+### 📋 Module 2: Clipboard Sanitizer
+Your clipboard holds passwords, credit cards, and sensitive data. This module auto-wipes it after 60 seconds of inactivity and blocks unauthorized background paste attempts.
 
-| Level | Score | Permissions |
-|-------|-------|-------------|
-| 🔴 Critical | 10 pts | `<all_urls>`, `http://*/*`, `https://*/*`, `webRequest`, `webRequestBlocking`, `debugger`, `proxy` |
-| 🟠 High | 7 pts | `tabs`, `history`, `cookies`, `bookmarks`, `downloads`, `clipboardRead`, `privacy`, `browsingData` |
-| 🟡 Medium | 4 pts | `activeTab`, `storage`, `contextMenus`, `identity`, `webNavigation`, `scripting` |
-| 🟢 Low | 1 pt | `alarms`, `idle`, `power`, `fontSettings`, `notifications` |
+- Automatic clipboard clearing on configurable timer (30s / 60s / 120s)
+- Blocks stealth clipboard access from background scripts
+- Activity logging for your dashboard
+- Toggle on/off anytime
 
-### Grading Scale
+### 🔗 Module 3: Visual URL Shield
+Catches phishing attacks that use look-alike characters. That "google.com" might actually be "gооgle.com" using Cyrillic characters.
 
-| Grade | Score Range | Meaning |
-|-------|------------|---------|
-| **A** | 0–5 | Safe |
-| **B** | 6–15 | Low risk |
-| **C** | 16–30 | Moderate risk — notification sent |
-| **D** | 31–50 | High risk — persistent notification |
-| **F** | 51+ | Dangerous — persistent notification |
+- **Punycode detection** — flags `xn--` encoded domains
+- **Homograph analysis** — detects Cyrillic/Latin character swaps (а↔a, е↔e, о↔o, etc.)
+- **Look-alike patterns** — catches 0↔O, 1↔l, rn↔m substitutions
+- **Known phishing patterns** — g00gle, amaz0n, paypa1
+- Visual warning banner injected on suspicious pages
+- One-click "Go back to safety" protection
 
-## Installation
+### 👻 Module 4: Ghost Script Monitor
+Detects invisible overlay attacks (clickjacking/UI redressing). Malicious pages layer invisible elements over legitimate buttons to hijack your clicks.
 
-### Developer Mode (Now)
+- **MutationObserver** watches for dynamically injected elements
+- **Detection criteria:** opacity < 0.1, z-index > 9999, covering significant area
+- Checks for invisible iframes overlaying interactive elements
+- Visual red outline on detected ghost elements
+- Real-time alerts with element details
+- Uses `requestIdleCallback` for zero performance impact
 
-1. Clone this repo: `git clone https://github.com/VMaroon95/ExtensionGuard.git`
-2. Open Chrome → `chrome://extensions/`
-3. Enable **Developer mode** (top right)
-4. Click **Load unpacked** → select the `extension/` folder
-5. Done! ExtensionGuard is now monitoring your browser
+### 🤖 Module 5: AI Privacy Filter
+Scans text fields on AI platforms (ChatGPT, Claude, Gemini, Copilot, etc.) and warns you before you accidentally submit sensitive data.
+
+- **PII Detection:** SSN, credit cards (with Luhn validation), phone numbers, email addresses
+- **Secret Detection:** API keys (AWS, OpenAI, GitHub, Stripe, Google, Slack), private keys, JWT tokens
+- **Password Detection:** common password= and pwd= patterns
+- **Supported platforms:** ChatGPT, Claude, Gemini, Copilot, Perplexity, Poe, HuggingFace, and more
+- Inline warning near the text field — warns but never blocks (you have final say)
+- Debounced scanning (300ms) for zero performance impact
+- **Never stores or transmits the actual sensitive data** — only logs the detection type
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│              BACKGROUND SERVICE WORKER       │
+│                                              │
+│  ┌──────────┐ ┌──────────┐ ┌─────────────┐  │
+│  │Extension │ │Clipboard │ │  URL Shield  │  │
+│  │ Monitor  │ │Sanitizer │ │  (tab check) │  │
+│  └──────────┘ └──────────┘ └─────────────┘  │
+│                                              │
+│  ┌────────────────────────────────────────┐  │
+│  │    Notification & Storage Manager      │  │
+│  └────────────────────────────────────────┘  │
+└──────────────┬───────────────────────────────┘
+               │ chrome.runtime messaging
+┌──────────────▼───────────────────────────────┐
+│            CONTENT SCRIPTS (per tab)         │
+│                                              │
+│  ┌──────────┐ ┌──────────┐ ┌─────────────┐  │
+│  │  Ghost   │ │AI Privacy│ │ URL Shield  │  │
+│  │ Monitor  │ │  Filter  │ │  (banners)  │  │
+│  └──────────┘ └──────────┘ └─────────────┘  │
+└──────────────────────────────────────────────┘
+               │
+┌──────────────▼───────────────────────────────┐
+│              POPUP DASHBOARD                 │
+│  Module status • Activity feed • Settings   │
+│  Privacy & Transparency                      │
+└──────────────────────────────────────────────┘
+```
+
+All processing happens **locally in your browser**. There is no server component.
+
+---
+
+## 📊 Permission Risk Methodology
+
+| Risk Tier | Score | Permissions |
+|-----------|-------|-------------|
+| 🔴 Critical | 10 | `<all_urls>`, `http://*/*`, `https://*/*`, `webRequest`, `webRequestBlocking`, `debugger`, `proxy` |
+| 🟠 High | 7 | `tabs`, `history`, `cookies`, `bookmarks`, `downloads`, `clipboardRead`, `privacy`, `browsingData` |
+| 🟡 Medium | 4 | `activeTab`, `storage`, `contextMenus`, `identity`, `webNavigation`, `scripting` |
+| 🟢 Low | 1 | `alarms`, `idle`, `power`, `fontSettings`, `notifications` |
+
+**Grading Scale:** A (0–5) • B (6–15) • C (16–30) • D (31–50) • F (51+)
+
+---
+
+## 📦 Installation
 
 ### Chrome Web Store
+*Coming soon*
 
-Coming soon.
-
-## Architecture
-
-```
-extension/
-├── manifest.json      # Manifest V3 configuration
-├── background.js      # Service worker — event listeners, risk analysis, notifications
-├── popup.html         # Dashboard UI
-├── popup.css          # Dark theme styles
-├── popup.js           # Dashboard logic
-└── icons/             # Shield icons (16, 48, 128px)
-```
-
-- **background.js** — Listens to `chrome.management.onInstalled` and `onEnabled` events, performs permission risk analysis, fires notifications, and stores results
-- **popup.js** — Reads scan results from `chrome.storage.local` and renders the dashboard
-
-## Privacy
-
-**Zero data leaves your browser. Ever.**
-
-- No servers, no analytics, no tracking
-- All permission analysis runs locally in the service worker
-- Scan results stored only in `chrome.storage.local`
-- No network requests made by ExtensionGuard
-- See [PRIVACY.md](PRIVACY.md) for full policy
-
-## Tech Stack
-
-- Chrome Extension Manifest V3
-- Vanilla JavaScript (no dependencies)
-- Chrome Management API
-- Chrome Storage API
-- Chrome Notifications API
-- Chrome Alarms API
-
-## Roadmap
-
-- [ ] 📧 Weekly email digest of extension safety reports
-- [ ] 🦊 Firefox port (WebExtensions API)
-- [ ] 👥 Team dashboard for enterprise
-- [ ] 🌐 Extension reputation API integration
-- [ ] 📱 Extension update changelog tracking
-- [ ] ⚙️ Custom risk thresholds
-
-## Contributing
-
-Contributions welcome! Please open an issue first to discuss what you'd like to change.
-
-1. Fork the repo
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-MIT License — see [LICENSE](LICENSE)
+### Developer Mode (try it now)
+1. Clone this repo: `git clone https://github.com/VMaroon95/ExtensionGuard.git`
+2. Open Chrome → `chrome://extensions`
+3. Enable **Developer mode** (top right toggle)
+4. Click **Load unpacked**
+5. Select the `extension/` folder
+6. ExtensionGuard is now protecting you ✅
 
 ---
 
-Built by [Varun Meda](https://github.com/VMaroon95) · © 2026
+## 🔒 Privacy & Transparency
+
+- **100% local processing** — all analysis runs on your device
+- **Zero data transmission** — nothing is ever sent to any server
+- **No telemetry** — we don't track you, period
+- **No accounts** — no sign-up, no login, no cloud
+- **Open source** — every line of code is auditable on GitHub
+- **Free forever** — built for the world's safety
+
+See our full [Privacy Policy](PRIVACY.md) for details.
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Chrome Web Store listing
+- [ ] Email digest alerts (opt-in)
+- [ ] Firefox port
+- [ ] Safari port
+- [ ] Enterprise team dashboard
+- [ ] Community threat intelligence feed
+- [ ] Extension reputation database
+- [ ] Auto-disable dangerous extensions (with user consent)
+
+---
+
+## 🛠️ Tech Stack
+
+- **Chrome Extension Manifest V3**
+- **Vanilla JavaScript** — no frameworks, no dependencies, lightweight
+- **Chrome APIs:** Management, Notifications, Storage, Alarms, Tabs, Scripting, DeclarativeNetRequest
+- **Content Scripts:** MutationObserver, getBoundingClientRect, Regex-based PII detection
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+1. Fork the repo
+2. Create a feature branch
+3. Make your changes
+4. Submit a PR
+
+---
+
+## 📄 License
+
+MIT License — Copyright © 2026 Varun Meda
+
+Built with ❤️ for a safer internet.

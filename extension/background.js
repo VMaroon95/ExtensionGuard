@@ -1,207 +1,643 @@
-// ExtensionGuard v2 — Background Service Worker
+// ============================================
+// EXTENSIONGUARD v2.0 — BACKGROUND SERVICE WORKER
+// 5 Security Modules | 100% Local Processing
+// ============================================
 
-const PERMISSION_RISK = {
-  // CRITICAL (10 points)
-  '<all_urls>': 10, 'http://*/*': 10, 'https://*/*': 10,
-  'webRequest': 10, 'webRequestBlocking': 10, 'debugger': 10, 'proxy': 10,
-  // HIGH (7 points)
-  'tabs': 7, 'history': 7, 'cookies': 7, 'bookmarks': 7,
-  'downloads': 7, 'clipboardRead': 7, 'privacy': 7, 'browsingData': 7,
-  // MEDIUM (4 points)
-  'activeTab': 4, 'storage': 4, 'contextMenus': 4, 'identity': 4,
-  'webNavigation': 4, 'scripting': 4,
-  // LOW (1 point)
-  'alarms': 1, 'idle': 1, 'power': 1, 'fontSettings': 1, 'notifications': 1
+// ---- DEFAULT SETTINGS ----
+const DEFAULT_SETTINGS = {
+  modules: {
+    extensionMonitor: true,
+    clipboardSanitizer: true,
+    urlShield: true,
+    ghostMonitor: true,
+    aiPrivacyFilter: true
+  },
+  clipboardInterval: 60,
+  notifications: 'all' // 'all' | 'critical' | 'silent'
 };
 
-const PERMISSIONS_EXPLAINED = {
-  '<all_urls>': 'Can access and modify ALL websites you visit',
-  'http://*/*': 'Can access and modify all HTTP websites',
-  'https://*/*': 'Can access and modify all HTTPS websites',
-  'webRequest': 'Can intercept and observe all network requests',
-  'webRequestBlocking': 'Can block or modify network requests before they complete',
-  'debugger': 'Can attach a debugger to any tab — full control over page content',
-  'proxy': 'Can route your traffic through any proxy server',
-  'tabs': 'Can see every tab you have open, including URLs and titles',
-  'history': 'Can read and delete your entire browsing history',
-  'cookies': 'Can read and modify cookies on websites, including login sessions',
-  'bookmarks': 'Can read, create, and delete all your bookmarks',
-  'downloads': 'Can manage downloads and access downloaded files',
-  'clipboardRead': 'Can read the contents of your clipboard',
-  'privacy': 'Can change browser privacy settings',
-  'browsingData': 'Can delete browsing data like history, cookies, and cache',
-  'activeTab': 'Can access the currently active tab when you click the extension',
-  'storage': 'Can store data locally in the browser',
-  'contextMenus': 'Can add items to your right-click menu',
-  'identity': 'Can access your browser sign-in identity',
-  'webNavigation': 'Can monitor when you navigate between pages',
-  'scripting': 'Can inject and run scripts on web pages',
-  'alarms': 'Can schedule periodic background tasks',
-  'idle': 'Can detect when you are idle',
-  'power': 'Can manage system power settings',
-  'fontSettings': 'Can access font settings',
-  'notifications': 'Can show desktop notifications'
+const DEFAULT_STATS = {
+  extensionMonitor: { monitored: 0, flagged: 0, lastScan: 0 },
+  clipboardSanitizer: { clearCount: 0, lastCleared: 0, todayCount: 0, todayDate: '' },
+  urlShield: { blocked: 0, flaggedUrls: [] },
+  ghostMonitor: { detected: 0 },
+  aiPrivacyFilter: { prevented: 0 }
 };
 
-function getRiskLevel(permission) {
-  const score = PERMISSION_RISK[permission] || 0;
-  if (score >= 10) return 'critical';
-  if (score >= 7) return 'high';
-  if (score >= 4) return 'medium';
-  if (score >= 1) return 'low';
-  return 'none';
+// ---- SHARED UTILITIES ----
+
+const notificationTimestamps = new Map();
+const NOTIFICATION_COOLDOWN = 30000; // 30s dedup
+
+function shouldNotify(key) {
+  const now = Date.now();
+  const last = notificationTimestamps.get(key) || 0;
+  if (now - last < NOTIFICATION_COOLDOWN) return false;
+  notificationTimestamps.set(key, now);
+  return true;
 }
 
-function calculateGrade(score) {
-  if (score <= 5) return 'A';
-  if (score <= 15) return 'B';
-  if (score <= 30) return 'C';
-  if (score <= 50) return 'D';
+async function getSettings() {
+  const result = await chrome.storage.local.get('settings');
+  return result.settings || DEFAULT_SETTINGS;
+}
+
+async function getStats() {
+  const result = await chrome.storage.local.get('stats');
+  return result.stats || { ...DEFAULT_STATS };
+}
+
+async function updateStats(module, updates) {
+  const stats = await getStats();
+  stats[module] = { ...stats[module], ...updates };
+  await chrome.storage.local.set({ stats });
+  broadcastUpdate();
+}
+
+async function addActivity(module, icon, description) {
+  const result = await chrome.storage.local.get('activityLog');
+  const log = result.activityLog || [];
+  log.unshift({
+    module,
+    icon,
+    description,
+    timestamp: Date.now()
+  });
+  // Keep last 200 entries
+  if (log.length > 200) log.length = 200;
+  await chrome.storage.local.set({ activityLog: log });
+  broadcastUpdate();
+}
+
+function broadcastUpdate() {
+  chrome.runtime.sendMessage({ type: 'statsUpdated' }).catch(() => {});
+}
+
+async function fireNotification(id, title, message, priority = 'normal') {
+  const settings = await getSettings();
+  if (settings.notifications === 'silent') return;
+  if (settings.notifications === 'critical' && priority !== 'critical') return;
+  if (!shouldNotify(id)) return;
+
+  chrome.notifications.create(id + '-' + Date.now(), {
+    type: 'basic',
+    iconUrl: 'icons/icon128.png',
+    title,
+    message,
+    priority: priority === 'critical' ? 2 : 1
+  });
+}
+
+async function isModuleEnabled(moduleName) {
+  const settings = await getSettings();
+  return settings.modules[moduleName] !== false;
+}
+
+// ---- MODULE 1: EXTENSION MONITOR ----
+
+const PERMISSION_RISK = {
+  '<all_urls>': 'CRITICAL',
+  'http://*/*': 'CRITICAL',
+  'https://*/*': 'CRITICAL',
+  'file:///*': 'CRITICAL',
+  'webRequest': 'HIGH',
+  'webRequestBlocking': 'CRITICAL',
+  'cookies': 'HIGH',
+  'history': 'HIGH',
+  'bookmarks': 'MEDIUM',
+  'tabs': 'MEDIUM',
+  'activeTab': 'LOW',
+  'storage': 'LOW',
+  'alarms': 'LOW',
+  'notifications': 'LOW',
+  'clipboardRead': 'HIGH',
+  'clipboardWrite': 'MEDIUM',
+  'geolocation': 'HIGH',
+  'management': 'HIGH',
+  'nativeMessaging': 'CRITICAL',
+  'proxy': 'CRITICAL',
+  'debugger': 'CRITICAL',
+  'declarativeNetRequest': 'MEDIUM',
+  'scripting': 'HIGH',
+  'topSites': 'MEDIUM',
+  'browsingData': 'HIGH',
+  'contentSettings': 'HIGH',
+  'downloads': 'MEDIUM',
+  'identity': 'HIGH',
+  'privacy': 'HIGH',
+  'system.cpu': 'LOW',
+  'system.memory': 'LOW',
+  'system.storage': 'LOW',
+  'tts': 'LOW',
+  'unlimitedStorage': 'LOW',
+  'webNavigation': 'MEDIUM',
+  'pageCapture': 'HIGH',
+  'tabCapture': 'HIGH',
+  'desktopCapture': 'CRITICAL'
+};
+
+function calculateGrade(permissions, hostPermissions) {
+  const allPerms = [...(permissions || []), ...(hostPermissions || [])];
+  let score = 100;
+
+  for (const perm of allPerms) {
+    const risk = PERMISSION_RISK[perm];
+    if (risk === 'CRITICAL') score -= 30;
+    else if (risk === 'HIGH') score -= 15;
+    else if (risk === 'MEDIUM') score -= 8;
+    else if (risk === 'LOW') score -= 3;
+    else score -= 5; // unknown permission
+  }
+
+  if (score >= 90) return 'A';
+  if (score >= 75) return 'B';
+  if (score >= 55) return 'C';
+  if (score >= 35) return 'D';
   return 'F';
 }
 
-function analyzeExtension(extInfo) {
-  const permissions = [
-    ...(extInfo.permissions || []),
-    ...(extInfo.hostPermissions || [])
-  ];
-
-  let totalScore = 0;
-  const permissionDetails = [];
-
-  for (const perm of permissions) {
-    const score = PERMISSION_RISK[perm] || 0;
-    totalScore += score;
-    permissionDetails.push({
-      permission: perm,
-      score,
-      level: getRiskLevel(perm),
-      explanation: PERMISSIONS_EXPLAINED[perm] || `Requests "${perm}" permission`
-    });
-  }
-
-  permissionDetails.sort((a, b) => b.score - a.score);
-
-  const grade = calculateGrade(totalScore);
-
-  return {
-    id: extInfo.id,
-    name: extInfo.name,
-    version: extInfo.version,
-    enabled: extInfo.enabled,
-    type: extInfo.type,
-    totalScore,
-    grade,
-    permissions: permissionDetails,
-    permissionCount: permissions.length,
-    scannedAt: Date.now()
-  };
+function getRiskLevel(grade) {
+  if (grade === 'A') return 'Safe';
+  if (grade === 'B') return 'Low Risk';
+  if (grade === 'C') return 'Moderate Risk';
+  if (grade === 'D') return 'High Risk';
+  return 'Dangerous';
 }
 
-async function scanExtension(extInfo) {
-  if (extInfo.id === chrome.runtime.id) return null; // skip self
-  if (extInfo.type === 'theme') return null;
+async function scanExtension(ext) {
+  if (ext.id === chrome.runtime.id) return null;
 
-  const result = analyzeExtension(extInfo);
-  return result;
+  const permissions = ext.permissions || [];
+  const hostPermissions = ext.hostPermissions || [];
+  const grade = calculateGrade(permissions, hostPermissions);
+  const riskLevel = getRiskLevel(grade);
+
+  const extData = {
+    id: ext.id,
+    name: ext.name,
+    version: ext.version,
+    enabled: ext.enabled,
+    permissions,
+    hostPermissions,
+    grade,
+    riskLevel,
+    scannedAt: Date.now()
+  };
+
+  // Store extension data
+  const result = await chrome.storage.local.get('extensionData');
+  const data = result.extensionData || {};
+  const oldData = data[ext.id];
+  data[ext.id] = extData;
+  await chrome.storage.local.set({ extensionData: data });
+
+  return { extData, oldData };
+}
+
+async function checkPermissionCreep(ext, oldData, newData) {
+  if (!oldData) return;
+
+  const oldPerms = new Set([...(oldData.permissions || []), ...(oldData.hostPermissions || [])]);
+  const newPerms = [...(newData.permissions || []), ...(newData.hostPermissions || [])];
+
+  const addedPerms = newPerms.filter(p => !oldPerms.has(p));
+  if (addedPerms.length === 0) return;
+
+  const hasHighRisk = addedPerms.some(p => {
+    const risk = PERMISSION_RISK[p];
+    return risk === 'HIGH' || risk === 'CRITICAL';
+  });
+
+  if (hasHighRisk) {
+    const permNames = addedPerms.join(', ');
+    await fireNotification(
+      'perm-creep-' + ext.id,
+      '⚠️ Permission Creep Alert',
+      `Extension "${ext.name}" just gained new permissions after an update: ${permNames}`,
+      'critical'
+    );
+    await addActivity('extensionMonitor', '⚠️', `Permission creep: "${ext.name}" gained ${permNames}`);
+  }
 }
 
 async function scanAllExtensions() {
+  if (!await isModuleEnabled('extensionMonitor')) return;
+
   const extensions = await chrome.management.getAll();
-  const results = {};
+  let flagged = 0;
 
   for (const ext of extensions) {
     const result = await scanExtension(ext);
-    if (result) results[ext.id] = result;
+    if (result && (result.extData.grade === 'D' || result.extData.grade === 'F')) {
+      flagged++;
+    }
   }
 
-  await chrome.storage.local.set({
-    scanResults: results,
-    lastScanTime: Date.now()
+  await updateStats('extensionMonitor', {
+    monitored: extensions.length - 1, // exclude self
+    flagged,
+    lastScan: Date.now()
   });
-
-  return results;
 }
 
-async function handleExtensionEvent(extInfo) {
-  const result = await scanExtension(extInfo);
+chrome.management.onInstalled.addListener(async (ext) => {
+  if (!await isModuleEnabled('extensionMonitor')) return;
+
+  const result = await scanExtension(ext);
   if (!result) return;
 
-  const { scanResults = {} } = await chrome.storage.local.get('scanResults');
-  const oldResult = scanResults[extInfo.id];
-  scanResults[extInfo.id] = result;
-  await chrome.storage.local.set({ scanResults, lastScanTime: Date.now() });
+  const { extData, oldData } = result;
 
-  const { notificationsEnabled = true } = await chrome.storage.local.get('notificationsEnabled');
-  if (!notificationsEnabled) return;
+  if (oldData) {
+    // This is an update
+    await checkPermissionCreep(ext, oldData, extData);
+    await addActivity('extensionMonitor', '🔄', `Extension updated: "${ext.name}" v${ext.version} (Grade: ${extData.grade})`);
+  } else {
+    // New install
+    if (extData.grade === 'D' || extData.grade === 'F') {
+      await fireNotification(
+        'ext-risky-' + ext.id,
+        '🚨 Risky Extension Installed',
+        `"${ext.name}" received grade ${extData.grade} (${extData.riskLevel}). Review its permissions.`,
+        'critical'
+      );
+    } else {
+      await fireNotification(
+        'ext-install-' + ext.id,
+        '🔍 New Extension Detected',
+        `"${ext.name}" — Grade: ${extData.grade} (${extData.riskLevel})`
+      );
+    }
+    await addActivity('extensionMonitor', '🔍', `New extension: "${ext.name}" — Grade ${extData.grade}`);
+  }
 
-  const shouldAlert = ['C', 'D', 'F'].includes(result.grade);
-  const gotWorse = oldResult && result.totalScore > oldResult.totalScore;
+  await scanAllExtensions();
+});
 
-  if (shouldAlert || gotWorse) {
-    const topPerms = result.permissions
-      .filter(p => p.score >= 7)
-      .slice(0, 3)
-      .map(p => `⚠️ ${p.explanation}`)
-      .join('\n');
+chrome.management.onEnabled.addListener(async (ext) => {
+  if (!await isModuleEnabled('extensionMonitor')) return;
 
-    const gradeEmoji = { C: '⚠️', D: '🚨', F: '🔴' }[result.grade] || '⚠️';
+  const result = await scanExtension(ext);
+  if (!result) return;
 
-    chrome.notifications.create(`eg-${extInfo.id}-${Date.now()}`, {
-      type: 'basic',
-      iconUrl: 'icons/icon128.png',
-      title: `${gradeEmoji} ExtensionGuard Alert — Grade ${result.grade}`,
-      message: `"${result.name}" has risky permissions:\n${topPerms || 'Multiple medium-risk permissions detected'}`,
-      priority: result.grade === 'F' ? 2 : result.grade === 'D' ? 2 : 1,
-      requireInteraction: ['D', 'F'].includes(result.grade)
+  await addActivity('extensionMonitor', '✅', `Extension enabled: "${ext.name}" — Grade ${result.extData.grade}`);
+  await scanAllExtensions();
+});
+
+chrome.management.onUninstalled.addListener(async (id) => {
+  if (!await isModuleEnabled('extensionMonitor')) return;
+
+  const result = await chrome.storage.local.get('extensionData');
+  const data = result.extensionData || {};
+  const name = data[id]?.name || 'Unknown';
+  delete data[id];
+  await chrome.storage.local.set({ extensionData: data });
+
+  await addActivity('extensionMonitor', '🗑️', `Extension removed: "${name}"`);
+  await scanAllExtensions();
+});
+
+// ---- MODULE 2: CLIPBOARD SANITIZER ----
+
+async function clearClipboard() {
+  if (!await isModuleEnabled('clipboardSanitizer')) return;
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.id || tab.url?.startsWith('chrome://')) return;
+
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        navigator.clipboard.writeText('').catch(() => {});
+      }
     });
+
+    const stats = await getStats();
+    const today = new Date().toDateString();
+    const todayCount = stats.clipboardSanitizer.todayDate === today
+      ? stats.clipboardSanitizer.todayCount + 1
+      : 1;
+
+    await updateStats('clipboardSanitizer', {
+      clearCount: (stats.clipboardSanitizer.clearCount || 0) + 1,
+      lastCleared: Date.now(),
+      todayCount,
+      todayDate: today
+    });
+  } catch (e) {
+    // Tab might not be accessible, silently continue
   }
 }
 
-// Event listeners
-chrome.management.onInstalled.addListener(handleExtensionEvent);
-chrome.management.onEnabled.addListener(handleExtensionEvent);
+// ---- MODULE 3: VISUAL URL SHIELD ----
 
-// Daily re-scan alarm
-chrome.alarms.create('dailyScan', { periodInMinutes: 1440 });
+const CONFUSABLE_CHARS = {
+  '\u0430': 'a', // Cyrillic а
+  '\u0435': 'e', // Cyrillic е
+  '\u043E': 'o', // Cyrillic о
+  '\u0440': 'p', // Cyrillic р
+  '\u0441': 'c', // Cyrillic с
+  '\u0443': 'y', // Cyrillic у (looks like y)
+  '\u0445': 'x', // Cyrillic х
+  '\u04BB': 'h', // Cyrillic һ
+  '\u0456': 'i', // Cyrillic і
+  '\u0458': 'j', // Cyrillic ј
+  '\u04CF': 'l', // Cyrillic ӏ
+  '\u043D': 'n', // Cyrillic н (similar in some fonts)
+  '\u0455': 's', // Cyrillic ѕ
+  '\u0457': 'i', // Cyrillic ї
+  '\u0491': 'r', // Cyrillic ґ
+  '\u03B1': 'a', // Greek alpha
+  '\u03BF': 'o', // Greek omicron
+  '\u03B5': 'e', // Greek epsilon
+  '\u0261': 'g', // Latin small script g
+  '\u01C3': '!', // Latin letter retroflex click
+};
 
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === 'dailyScan') {
-    const oldResults = (await chrome.storage.local.get('scanResults')).scanResults || {};
-    const newResults = await scanAllExtensions();
+const LOOKALIKE_PATTERNS = [
+  { pattern: /g[0o][0o]gle/i, target: 'google' },
+  { pattern: /amaz[0o]n/i, target: 'amazon' },
+  { pattern: /paypa[1l]/i, target: 'paypal' },
+  { pattern: /app[1l]e/i, target: 'apple' },
+  { pattern: /faceb[0o][0o]k/i, target: 'facebook' },
+  { pattern: /micr[0o]s[0o]ft/i, target: 'microsoft' },
+  { pattern: /netf[1l]ix/i, target: 'netflix' },
+  { pattern: /tw[1i]tter/i, target: 'twitter' },
+  { pattern: /1nstagram/i, target: 'instagram' },
+  { pattern: /wa[1l]mart/i, target: 'walmart' },
+  { pattern: /chases?[0o]n[1l]ine/i, target: 'chase' },
+  { pattern: /we[1l]{2}sfarg[0o]/i, target: 'wellsfargo' },
+  { pattern: /bank[0o]famerica/i, target: 'bankofamerica' },
+];
 
-    const { notificationsEnabled = true } = await chrome.storage.local.get('notificationsEnabled');
-    if (!notificationsEnabled) return;
+function analyzeUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname;
+    const issues = [];
 
-    for (const [id, newResult] of Object.entries(newResults)) {
-      const old = oldResults[id];
-      if (old && newResult.totalScore > old.totalScore && ['C', 'D', 'F'].includes(newResult.grade)) {
-        chrome.notifications.create(`eg-rescan-${id}-${Date.now()}`, {
-          type: 'basic',
-          iconUrl: 'icons/icon128.png',
-          title: `🔄 ExtensionGuard — "${newResult.name}" risk increased`,
-          message: `Grade changed: ${old.grade} → ${newResult.grade}. Review recommended.`,
-          priority: 2,
-          requireInteraction: ['D', 'F'].includes(newResult.grade)
+    // Check punycode
+    if (hostname.includes('xn--')) {
+      issues.push({ type: 'punycode', detail: `Punycode domain detected: ${hostname}` });
+    }
+
+    // Check homograph characters
+    const confusableFound = [];
+    for (const char of hostname) {
+      if (CONFUSABLE_CHARS[char]) {
+        confusableFound.push({ char, looksLike: CONFUSABLE_CHARS[char], code: char.codePointAt(0).toString(16) });
+      }
+    }
+    if (confusableFound.length > 0) {
+      issues.push({
+        type: 'homograph',
+        detail: `Suspicious characters: ${confusableFound.map(c => `"${c.char}" (U+${c.code.toUpperCase()}) looks like "${c.looksLike}"`).join(', ')}`,
+        chars: confusableFound
+      });
+    }
+
+    // Check lookalike substitutions in hostname
+    for (const { pattern, target } of LOOKALIKE_PATTERNS) {
+      if (pattern.test(hostname) && !hostname.includes(target)) {
+        issues.push({
+          type: 'lookalike',
+          detail: `Domain resembles "${target}" but uses character substitutions`
         });
       }
     }
+
+    // Check for 0/O, 1/l, rn/m substitutions
+    const domainPart = hostname.split('.')[0];
+    if (/rn/.test(domainPart)) {
+      // Check if removing 'rn' → 'm' produces a common domain word
+      const withM = domainPart.replace(/rn/g, 'm');
+      const commonWords = ['amazon', 'gmail', 'microsoft', 'samsung', 'walmart'];
+      for (const word of commonWords) {
+        if (withM.includes(word) && !domainPart.includes(word)) {
+          issues.push({
+            type: 'lookalike',
+            detail: `"rn" may be impersonating "m" — could be mimicking "${word}"`
+          });
+        }
+      }
+    }
+
+    return issues;
+  } catch {
+    return [];
+  }
+}
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (!await isModuleEnabled('urlShield')) return;
+  if (changeInfo.status !== 'complete' || !tab.url) return;
+  if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) return;
+
+  const issues = analyzeUrl(tab.url);
+  if (issues.length === 0) return;
+
+  // Check if user has excepted this URL
+  const exceptResult = await chrome.storage.local.get('urlExceptions');
+  const exceptions = exceptResult.urlExceptions || [];
+  if (exceptions.includes(tab.url)) return;
+
+  const description = issues.map(i => i.detail).join('; ');
+
+  await fireNotification(
+    'url-shield-' + tabId,
+    '🔗 Suspicious URL Detected',
+    description,
+    'critical'
+  );
+
+  // Send to content script
+  try {
+    await chrome.tabs.sendMessage(tabId, {
+      type: 'urlWarning',
+      url: tab.url,
+      issues
+    });
+  } catch {
+    // Content script might not be loaded yet
+  }
+
+  const stats = await getStats();
+  await updateStats('urlShield', {
+    blocked: (stats.urlShield.blocked || 0) + 1,
+    flaggedUrls: [...(stats.urlShield.flaggedUrls || []).slice(-49), { url: tab.url, issues, timestamp: Date.now() }]
+  });
+
+  await addActivity('urlShield', '🔗', `Suspicious URL: ${tab.url.substring(0, 60)}...`);
+});
+
+// ---- MODULE 4: GHOST SCRIPT MONITOR (background handler) ----
+// ---- MODULE 5: AI PRIVACY FILTER (background handler) ----
+// ---- MESSAGE ROUTER ----
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || !message.module) {
+    // Handle non-module messages
+    if (message.type === 'getSettings') {
+      getSettings().then(sendResponse);
+      return true;
+    }
+    if (message.type === 'saveSettings') {
+      chrome.storage.local.set({ settings: message.settings }).then(() => {
+        // Update clipboard alarm based on new settings
+        setupAlarms();
+        sendResponse({ success: true });
+      });
+      return true;
+    }
+    if (message.type === 'getStats') {
+      getStats().then(sendResponse);
+      return true;
+    }
+    if (message.type === 'getActivityLog') {
+      chrome.storage.local.get('activityLog').then(r => sendResponse(r.activityLog || []));
+      return true;
+    }
+    if (message.type === 'getExtensionData') {
+      chrome.storage.local.get('extensionData').then(r => sendResponse(r.extensionData || {}));
+      return true;
+    }
+    if (message.type === 'scanAll') {
+      scanAllExtensions().then(() => sendResponse({ success: true }));
+      return true;
+    }
+    if (message.type === 'clearHistory') {
+      chrome.storage.local.set({
+        activityLog: [],
+        stats: { ...DEFAULT_STATS }
+      }).then(() => {
+        broadcastUpdate();
+        sendResponse({ success: true });
+      });
+      return true;
+    }
+    if (message.type === 'exportLog') {
+      chrome.storage.local.get(['activityLog', 'stats', 'extensionData']).then(sendResponse);
+      return true;
+    }
+    if (message.type === 'addUrlException') {
+      chrome.storage.local.get('urlExceptions').then(r => {
+        const exceptions = r.urlExceptions || [];
+        exceptions.push(message.url);
+        chrome.storage.local.set({ urlExceptions: exceptions }).then(() => sendResponse({ success: true }));
+      });
+      return true;
+    }
+    if (message.type === 'toggleModule') {
+      getSettings().then(async settings => {
+        settings.modules[message.moduleName] = message.enabled;
+        await chrome.storage.local.set({ settings });
+        setupAlarms();
+        sendResponse({ success: true });
+      });
+      return true;
+    }
+    return false;
+  }
+
+  // Module-specific messages
+  (async () => {
+    if (message.module === 'ghost' && message.type === 'detection') {
+      if (!await isModuleEnabled('ghostMonitor')) return;
+
+      const stats = await getStats();
+      await updateStats('ghostMonitor', {
+        detected: (stats.ghostMonitor.detected || 0) + 1
+      });
+
+      await fireNotification(
+        'ghost-' + (sender.tab?.id || 'unknown'),
+        '👻 Hidden Overlay Detected',
+        `A hidden element was found on ${message.details?.url || 'a page'}: ${message.details?.tag || 'unknown'} element with opacity ${message.details?.opacity}`,
+        'critical'
+      );
+
+      await addActivity('ghostMonitor', '👻', `Hidden overlay on ${(message.details?.url || '').substring(0, 50)}: ${message.details?.tag} (z-index: ${message.details?.zIndex})`);
+      sendResponse({ success: true });
+    }
+
+    if (message.module === 'ai-privacy' && message.type === 'detection') {
+      if (!await isModuleEnabled('aiPrivacyFilter')) return;
+
+      const stats = await getStats();
+      await updateStats('aiPrivacyFilter', {
+        prevented: (stats.aiPrivacyFilter.prevented || 0) + 1
+      });
+
+      await fireNotification(
+        'ai-pii-' + message.details?.piiType,
+        '🤖 Sensitive Data Warning',
+        `${message.details?.piiType || 'PII'} detected on ${message.details?.domain || 'an AI platform'}. Remove before sending!`,
+        'critical'
+      );
+
+      await addActivity('aiPrivacyFilter', '🤖', `${message.details?.piiType} detected on ${message.details?.domain}`);
+      sendResponse({ success: true });
+    }
+  })();
+
+  return true;
+});
+
+// ---- ALARMS ----
+
+async function setupAlarms() {
+  await chrome.alarms.clearAll();
+
+  // Daily extension scan
+  chrome.alarms.create('daily-scan', { periodInMinutes: 1440 });
+
+  // Clipboard sanitizer
+  const settings = await getSettings();
+  if (settings.modules.clipboardSanitizer) {
+    const interval = settings.clipboardInterval || 60;
+    if (interval > 0) {
+      chrome.alarms.create('clipboard-sanitizer', { periodInMinutes: interval / 60 });
+    }
+  }
+}
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === 'daily-scan') {
+    await scanAllExtensions();
+    await addActivity('extensionMonitor', '🔍', 'Daily extension scan completed');
+  }
+
+  if (alarm.name === 'clipboard-sanitizer') {
+    await clearClipboard();
   }
 });
 
-// Initial scan on install
-chrome.runtime.onInstalled.addListener(() => {
-  scanAllExtensions();
+// ---- INITIALIZATION ----
+
+chrome.runtime.onInstalled.addListener(async (details) => {
+  // Initialize default settings if not present
+  const result = await chrome.storage.local.get('settings');
+  if (!result.settings) {
+    await chrome.storage.local.set({ settings: DEFAULT_SETTINGS });
+  }
+
+  const statsResult = await chrome.storage.local.get('stats');
+  if (!statsResult.stats) {
+    await chrome.storage.local.set({ stats: { ...DEFAULT_STATS } });
+  }
+
+  await setupAlarms();
+  await scanAllExtensions();
+
+  if (details.reason === 'install') {
+    await addActivity('extensionMonitor', '🛡️', 'ExtensionGuard v2.0 installed — 5 security modules active');
+  } else if (details.reason === 'update') {
+    await addActivity('extensionMonitor', '🛡️', `ExtensionGuard updated to v2.0`);
+  }
 });
 
-// Message handler for popup
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.action === 'scanAll') {
-    scanAllExtensions().then(results => sendResponse({ results }));
-    return true;
-  }
-  if (msg.action === 'getPermissionsExplained') {
-    sendResponse({ PERMISSIONS_EXPLAINED });
-    return true;
-  }
+chrome.runtime.onStartup.addListener(async () => {
+  await setupAlarms();
+  await scanAllExtensions();
 });

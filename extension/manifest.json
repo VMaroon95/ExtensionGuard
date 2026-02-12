@@ -1,10 +1,21 @@
 {
   "manifest_version": 3,
   "name": "ExtensionGuard",
-  "version": "1.0.0",
-  "description": "Silent browser protection. Get instant alerts when you install a risky Chrome extension.",
-  "permissions": ["management", "notifications", "storage", "alarms"],
-  "background": { "service_worker": "background.js" },
+  "version": "2.0.0",
+  "description": "Comprehensive browser safety suite. 5 security modules protecting you in real-time. 100% local, open-source, and free.",
+  "permissions": ["management", "notifications", "storage", "alarms", "clipboardWrite", "tabs", "scripting", "declarativeNetRequest"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/ghost-script-monitor.js", "content/ai-privacy-filter.js", "content/url-shield.js"],
+      "css": ["content/warning-styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
