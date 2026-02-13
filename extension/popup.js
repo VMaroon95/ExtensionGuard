@@ -110,6 +110,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const data = await chrome.storage.local.get(['scanResults', 'lastScanTime']);
   renderResults(data.scanResults, data.lastScanTime);
 
+  // Report a Problem link
+  document.getElementById('reportLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: 'https://github.com/VMaroon95/ExtensionGuard/issues/new' });
+  });
+
   // Scan button
   scanBtn.addEventListener('click', () => {
     scanBtn.classList.add('scanning');

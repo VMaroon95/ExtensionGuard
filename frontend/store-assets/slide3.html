@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1280px; height: 800px; overflow: hidden; background: #0d1117; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #e6edf3; display: flex; align-items: center; justify-content: center; gap: 60px; padding: 60px 80px; }
+.left { flex: 1; }
+.left h1 { font-size: 44px; font-weight: 800; margin-bottom: 12px; letter-spacing: -1px; }
+.left h1 span { color: #58a6ff; }
+.left p { font-size: 20px; color: #8b949e; line-height: 1.5; margin-bottom: 32px; }
+.notif { background: #1c1208; border: 1px solid #d29922; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; }
+.notif .icon { font-size: 24px; margin-right: 8px; }
+.notif .text { font-size: 16px; line-height: 1.5; }
+.notif .ext-name { color: #f85149; font-weight: 700; }
+.notif .grade { background: #f85149; color: #fff; font-weight: 800; padding: 2px 8px; border-radius: 4px; font-size: 14px; }
+.right { flex: 1; }
+.dashboard { background: #161b22; border: 1px solid #30363d; border-radius: 16px; padding: 28px; }
+.dashboard h3 { font-size: 18px; margin-bottom: 20px; color: #8b949e; }
+.ext-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #21262d; }
+.ext-row:last-child { border-bottom: none; }
+.ext-info { display: flex; align-items: center; gap: 12px; }
+.ext-icon { width: 32px; height: 32px; border-radius: 8px; background: #30363d; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.ext-name2 { font-size: 15px; font-weight: 600; }
+.grade-badge { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; }
+.grade-a { background: rgba(46,160,67,0.2); color: #2ea043; }
+.grade-b { background: rgba(46,160,67,0.15); color: #56d364; }
+.grade-c { background: rgba(210,153,34,0.2); color: #d29922; }
+.grade-d { background: rgba(248,81,73,0.15); color: #f0883e; }
+.grade-f { background: rgba(248,81,73,0.2); color: #f85149; }
+</style>
+</head>
+<body>
+<div class="left">
+  <h1>🔍 Extension <span>Monitor</span></h1>
+  <p>Real-time alerts when you install risky extensions</p>
+  <div class="notif">
+    <div class="text"><span class="icon">⚠️</span> Extension '<span class="ext-name">Free VPN Pro</span>' rated <span class="grade">F</span> — has access to <strong>ALL</strong> your browsing data</div>
+  </div>
+  <div class="notif" style="background:#0d1208; border-color:#2ea043;">
+    <div class="text"><span class="icon">✅</span> Extension 'uBlock Origin' rated <span style="background:#2ea043;color:#fff;font-weight:800;padding:2px 8px;border-radius:4px;font-size:14px;">A</span> — minimal permissions</div>
+  </div>
+</div>
+<div class="right">
+  <div class="dashboard">
+    <h3>Your Extensions</h3>
+    <div class="ext-row"><div class="ext-info"><div class="ext-icon">🔒</div><div class="ext-name2">uBlock Origin</div></div><div class="grade-badge grade-a">A</div></div>
+    <div class="ext-row"><div class="ext-info"><div class="ext-icon">🌙</div><div class="ext-name2">Dark Reader</div></div><div class="grade-badge grade-b">B</div></div>
+    <div class="ext-row"><div class="ext-info"><div class="ext-icon">📝</div><div class="ext-name2">Grammarly</div></div><div class="grade-badge grade-c">C</div></div>
+    <div class="ext-row"><div class="ext-info"><div class="ext-icon">🔑</div><div class="ext-name2">Password Helper</div></div><div class="grade-badge grade-d">D</div></div>
+    <div class="ext-row"><div class="ext-info"><div class="ext-icon">🌐</div><div class="ext-name2">Free VPN Pro</div></div><div class="grade-badge grade-f">F</div></div>
+  </div>
+</div>
+</body>
+</html>
