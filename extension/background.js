@@ -95,6 +95,34 @@ async function isModuleEnabled(moduleName) {
 
 // ---- MODULE 1: EXTENSION MONITOR ----
 
+const PERMISSION_EXPLAIN = {
+  '<all_urls>': 'Access ALL websites you visit',
+  'http://*/*': 'Access all HTTP websites',
+  'https://*/*': 'Access all HTTPS websites',
+  'file:///*': 'Access local files on your computer',
+  'webRequest': 'Monitor all network requests',
+  'webRequestBlocking': 'Block or modify network requests',
+  'cookies': 'Read/modify cookies including login sessions',
+  'history': 'Read your entire browsing history',
+  'bookmarks': 'Read and modify bookmarks',
+  'tabs': 'See all open tabs and their URLs',
+  'activeTab': 'Access the current tab on click',
+  'clipboardRead': 'Read your clipboard contents',
+  'clipboardWrite': 'Write to your clipboard',
+  'geolocation': 'Access your location',
+  'management': 'Manage other extensions',
+  'nativeMessaging': 'Communicate with programs on your computer',
+  'proxy': 'Route your traffic through a proxy',
+  'debugger': 'Full debugging access to browser',
+  'scripting': 'Inject scripts into web pages',
+  'browsingData': 'Delete your browsing data',
+  'contentSettings': 'Change content settings (JS, cookies, etc.)',
+  'downloads': 'Manage your downloads',
+  'identity': 'Access your Google account identity',
+  'privacy': 'Change browser privacy settings',
+  'topSites': 'See your most visited sites',
+};
+
 const PERMISSION_RISK = {
   '<all_urls>': 'CRITICAL',
   'http://*/*': 'CRITICAL',
@@ -254,18 +282,31 @@ chrome.management.onInstalled.addListener(async (ext) => {
     await addActivity('extensionMonitor', '🔄', `Extension updated: "${ext.name}" v${ext.version} (Grade: ${extData.grade})`);
   } else {
     // New install
+    // Build a human-readable permission summary
+    const allPerms = [...(extData.permissions || []), ...(extData.hostPermissions || [])];
+    const dangerousPerms = allPerms.filter(p => PERMISSION_RISK[p] === 'CRITICAL' || PERMISSION_RISK[p] === 'HIGH');
+    const permSummary = dangerousPerms.length > 0
+      ? `\n⚠️ Risky permissions: ${dangerousPerms.slice(0, 3).map(p => PERMISSION_EXPLAIN[p] || p).join(', ')}${dangerousPerms.length > 3 ? ` +${dangerousPerms.length - 3} more` : ''}`
+      : '';
+
     if (extData.grade === 'D' || extData.grade === 'F') {
       await fireNotification(
         'ext-risky-' + ext.id,
-        '🚨 Risky Extension Installed',
-        `"${ext.name}" received grade ${extData.grade} (${extData.riskLevel}). Review its permissions.`,
+        `🚨 DANGER: "${ext.name}" — Grade ${extData.grade}`,
+        `This extension is ${extData.riskLevel.toLowerCase()}. It has ${allPerms.length} permissions.${permSummary}\n\nConsider removing it from chrome://extensions`,
         'critical'
+      );
+    } else if (extData.grade === 'C') {
+      await fireNotification(
+        'ext-warn-' + ext.id,
+        `⚠️ Warning: "${ext.name}" — Grade ${extData.grade}`,
+        `Moderate risk. ${allPerms.length} permissions detected.${permSummary}`
       );
     } else {
       await fireNotification(
         'ext-install-' + ext.id,
-        '🔍 New Extension Detected',
-        `"${ext.name}" — Grade: ${extData.grade} (${extData.riskLevel})`
+        `✅ "${ext.name}" — Grade ${extData.grade}`,
+        `Looks safe! ${allPerms.length} permissions, all low risk.`
       );
     }
     await addActivity('extensionMonitor', '🔍', `New extension: "${ext.name}" — Grade ${extData.grade}`);
