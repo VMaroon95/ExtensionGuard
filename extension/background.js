@@ -79,13 +79,27 @@ async function fireNotification(id, title, message, priority = 'normal') {
   if (settings.notifications === 'critical' && priority !== 'critical') return;
   if (!shouldNotify(id)) return;
 
+  // Create refined notification with auto-dismiss and better UX
   chrome.notifications.create(id + '-' + Date.now(), {
     type: 'basic',
     iconUrl: 'icons/icon128.png',
     title,
     message,
-    priority: priority === 'critical' ? 2 : 1
+    priority: priority === 'critical' ? 2 : 1,
+    requireInteraction: priority === 'critical',  // Only critical notifications require action
+    silent: false,
+    buttons: priority !== 'critical' ? [  // Dismiss button for non-critical alerts
+      { title: 'Dismiss', iconUrl: 'chrome://global-images/1/info/error' }  // Use system icon
+    ] : undefined,
+    contextMessage: 'ExtensionGuard silently protects your browser'  // Shows in notification center
   });
+  
+  // Auto-dismiss after 10 seconds for non-critical notifications
+  if (priority !== 'critical') {
+    setTimeout(() => {
+      chrome.notifications.clear(id);
+    }, 10000);  // 10 seconds
+  }
 }
 
 async function isModuleEnabled(moduleName) {
