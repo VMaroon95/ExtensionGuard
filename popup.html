@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <img src="icons/icon48.png" class="logo" alt="shield">
+      <div class="header-info">
+        <h1>ExtensionGuard</h1>
+        <div id="status" class="status safe">Protected ✓</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="extensions">Extensions</button>
+    <button class="tab" data-tab="activity">Activity</button>
+    <button class="tab" data-tab="settings">Settings</button>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div class="tab-content active" id="tab-dashboard">
+    <div class="module-grid">
+      <div class="module-card" id="mod-extmon">
+        <div class="mod-header">
+          <span class="mod-icon">🔍</span>
+          <span class="mod-name">Extension Monitor</span>
+          <label class="toggle"><input type="checkbox" data-module="extensionMonitor" checked><span class="slider"></span></label>
+        </div>
+        <div class="mod-stat"><span id="stat-monitored">0</span> monitored, <span id="stat-flagged">0</span> flagged</div>
+      </div>
+      <div class="module-card" id="mod-clipboard">
+        <div class="mod-header">
+          <span class="mod-icon">📋</span>
+          <span class="mod-name">Clipboard Sanitizer</span>
+          <label class="toggle"><input type="checkbox" data-module="clipboardSanitizer" checked><span class="slider"></span></label>
+        </div>
+        <div class="mod-stat">Cleared <span id="stat-clipboard">0</span> times today</div>
+      </div>
+      <div class="module-card" id="mod-url">
+        <div class="mod-header">
+          <span class="mod-icon">🔗</span>
+          <span class="mod-name">URL Shield</span>
+          <label class="toggle"><input type="checkbox" data-module="urlShield" checked><span class="slider"></span></label>
+        </div>
+        <div class="mod-stat"><span id="stat-urls">0</span> suspicious URLs caught</div>
+      </div>
+      <div class="module-card" id="mod-ghost">
+        <div class="mod-header">
+          <span class="mod-icon">👻</span>
+          <span class="mod-name">Ghost Monitor</span>
+          <label class="toggle"><input type="checkbox" data-module="ghostMonitor" checked><span class="slider"></span></label>
+        </div>
+        <div class="mod-stat"><span id="stat-ghost">0</span> overlays detected</div>
+      </div>
+      <div class="module-card" id="mod-ai">
+        <div class="mod-header">
+          <span class="mod-icon">🤖</span>
+          <span class="mod-name">AI Privacy Filter</span>
+          <label class="toggle"><input type="checkbox" data-module="aiPrivacyFilter" checked><span class="slider"></span></label>
+        </div>
+        <div class="mod-stat"><span id="stat-pii">0</span> PII leaks prevented</div>
+      </div>
+    </div>
+    <button class="scan-btn" id="scanBtn">🔍 Scan All Now</button>
+    <div class="last-scan" id="lastScan">Last scanned: never</div>
+  </div>
+
+  <!-- EXTENSIONS TAB -->
+  <div class="tab-content" id="tab-extensions">
+    <div class="stats-bar">
+      <div class="stat-item"><span class="stat-num" id="totalCount">0</span><span class="stat-label">Total</span></div>
+      <div class="stat-item safe"><span class="stat-num" id="safeCount">0</span><span class="stat-label">Safe</span></div>
+      <div class="stat-item warn"><span class="stat-num" id="warnCount">0</span><span class="stat-label">Warning</span></div>
+      <div class="stat-item danger"><span class="stat-num" id="dangerCount">0</span><span class="stat-label">Danger</span></div>
+    </div>
+    <div class="ext-list" id="extensionList"></div>
+  </div>
+
+  <!-- ACTIVITY TAB -->
+  <div class="tab-content" id="tab-activity">
+    <div class="activity-feed" id="activityFeed">
+      <div class="empty-state">No activity yet</div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div class="tab-content" id="tab-settings">
+    <div class="settings-group">
+      <h3>Notifications</h3>
+      <div class="setting-row">
+        <span>Alert Level</span>
+        <select id="notifLevel">
+          <option value="all">All alerts</option>
+          <option value="critical">Critical only</option>
+          <option value="silent">Silent</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <span>Clipboard Timer</span>
+        <select id="clipboardTimer">
+          <option value="30">30 seconds</option>
+          <option value="60" selected>60 seconds</option>
+          <option value="120">120 seconds</option>
+        </select>
+      </div>
+    </div>
+    <div class="settings-group">
+      <h3>Data</h3>
+      <button class="settings-btn" id="exportBtn">📥 Export Activity Log</button>
+      <button class="settings-btn danger" id="clearBtn">🗑️ Clear All History</button>
+    </div>
+    <div class="settings-group privacy">
+      <h3>🔒 Privacy & Transparency</h3>
+      <p>Everything ExtensionGuard does happens right here, on your device. Nothing is ever sent to any server.</p>
+      <p>We don't have servers. We don't collect data. We don't track you. Period.</p>
+      <p>ExtensionGuard is 100% free, open-source, and built for the world's safety.</p>
+      <a href="#" id="githubLink" class="github-link">⭐ View on GitHub</a>
+    </div>
+    <div class="footer">
+      <a href="#" id="reportLink">🐛 Report a Problem</a>
+      <span class="version">v2.0.0</span>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
