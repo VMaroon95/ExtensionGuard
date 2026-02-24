@@ -3,7 +3,7 @@
   "name": "ExtensionGuard",
   "version": "2.0.0",
   "description": "Comprehensive browser safety suite. 5 security modules protecting you in real-time. 100% local, open-source, and free.",
-  "permissions": ["management", "notifications", "storage", "alarms", "clipboardWrite", "tabs", "scripting", "declarativeNetRequest"],
+  "permissions": ["management", "notifications", "storage", "alarms", "clipboardWrite", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
