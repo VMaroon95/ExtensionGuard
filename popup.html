@@ -20,6 +20,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="dashboard">Dashboard</button>
     <button class="tab" data-tab="extensions">Extensions</button>
+    <button class="tab" data-tab="deepscan">Deep Scan</button>
     <button class="tab" data-tab="activity">Activity</button>
     <button class="tab" data-tab="settings">Settings</button>
   </div>
@@ -67,6 +68,13 @@
         </div>
         <div class="mod-stat"><span id="stat-pii">0</span> PII leaks prevented</div>
       </div>
+      <div class="module-card" id="mod-deepscan">
+        <div class="mod-header">
+          <span class="mod-icon">🔬</span>
+          <span class="mod-name">Deep Scan</span>
+        </div>
+        <div class="mod-stat">Forensic page auditor — use Deep Scan tab</div>
+      </div>
     </div>
     <button class="scan-btn" id="scanBtn">🔍 Scan All Now</button>
     <div class="last-scan" id="lastScan">Last scanned: never</div>
@@ -81,6 +89,43 @@
       <div class="stat-item danger"><span class="stat-num" id="dangerCount">0</span><span class="stat-label">Danger</span></div>
     </div>
     <div class="ext-list" id="extensionList"></div>
+  </div>
+
+  <!-- DEEP SCAN TAB -->
+  <div class="tab-content" id="tab-deepscan">
+    <div style="padding: 5px 0;">
+      <button id="deepScanBtn" class="scan-btn" style="width:100%; margin-bottom:10px;">🔬 Run Deep Scan on Current Page</button>
+      <div id="deepScanStatus" style="text-align:center; color:#8b949e; font-size:12px; margin-bottom:8px;"></div>
+      <div id="deepScanResults" style="display:none;">
+        <div class="stat-row" style="margin-bottom:8px;">
+          <span>Findings</span>
+          <span id="deepScanCount" style="font-weight:bold;">0</span>
+        </div>
+
+        <div id="deepScanSecrets" style="display:none; margin-bottom:8px;">
+          <div style="color:#f85149; font-weight:bold; font-size:12px; margin-bottom:4px;">🔐 Exposed Secrets</div>
+          <div id="deepScanSecretsList" class="ext-details open" style="font-size:11px;"></div>
+        </div>
+
+        <div id="deepScanScripts" style="display:none; margin-bottom:8px;">
+          <div style="color:#d29922; font-weight:bold; font-size:12px; margin-bottom:4px;">⚠️ Suspicious Scripts</div>
+          <div id="deepScanScriptsList" class="ext-details open" style="font-size:11px;"></div>
+        </div>
+
+        <div id="deepScanExfil" style="display:none; margin-bottom:8px;">
+          <div style="color:#d29922; font-weight:bold; font-size:12px; margin-bottom:4px;">📡 Data Exfiltration</div>
+          <div id="deepScanExfilList" class="ext-details open" style="font-size:11px;"></div>
+        </div>
+
+        <div id="deepScanClean" style="display:none; text-align:center; color:#2ea043; padding:15px;">
+          ✅ No threats detected on this page
+        </div>
+
+        <button id="deepScanExport" style="width:100%; margin-top:8px; padding:6px; background:#21262d; color:#c9d1d9; border:1px solid #30363d; border-radius:4px; cursor:pointer; font-size:11px;">
+          📄 Export Scan Report (JSON)
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- ACTIVITY TAB -->

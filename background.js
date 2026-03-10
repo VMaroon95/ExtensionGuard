@@ -602,6 +602,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
     }
 
+    if (message.module === 'deepScan' && message.type === 'scanComplete') {
+      await addActivity('deepScan', '🔬', `Deep scan: ${message.findings} finding(s) on ${(message.url || '').substring(0, 50)}`);
+      sendResponse({ success: true });
+    }
+
     if (message.module === 'ai-privacy' && message.type === 'detection') {
       if (!await isModuleEnabled('aiPrivacyFilter')) return;
 

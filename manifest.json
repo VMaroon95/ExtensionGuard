@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ExtensionGuard",
-  "version": "2.0.0",
-  "description": "Comprehensive browser safety suite. 5 security modules protecting you in real-time. 100% local, open-source, and free.",
+  "version": "2.1.0",
+  "description": "Browser safety suite with forensic auditing. 6 security modules protecting you in real-time. Detect hidden data exfiltration, exposed secrets, and suspicious scripts. 100% local, open-source, and free.",
   "permissions": ["management", "notifications", "storage", "alarms", "clipboardWrite", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": {
@@ -11,7 +11,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/ghost-script-monitor.js", "content/ai-privacy-filter.js", "content/url-shield.js"],
+      "js": ["content/ghost-script-monitor.js", "content/ai-privacy-filter.js", "content/url-shield.js", "content/deep-scan.js"],
       "css": ["content/warning-styles.css"],
       "run_at": "document_idle"
     }

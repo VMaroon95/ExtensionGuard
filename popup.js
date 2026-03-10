@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
       // Load tab-specific data
       if (tab.dataset.tab === 'extensions') loadExtensions();
+      if (tab.dataset.tab === 'deepscan') initDeepScan();
       if (tab.dataset.tab === 'activity') loadActivity();
     });
   });
@@ -304,6 +305,126 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (message.type === 'statsUpdated') {
       loadDashboard();
     }
+  });
+
+  // ---- DEEP SCAN ----
+  let lastDeepScanResults = null;
+
+  function initDeepScan() {
+    // Just reset UI state when tab is shown
+  }
+
+  document.getElementById('deepScanBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('deepScanBtn');
+    const status = document.getElementById('deepScanStatus');
+    const resultsDiv = document.getElementById('deepScanResults');
+
+    btn.textContent = '⏳ Scanning...';
+    btn.disabled = true;
+    status.textContent = '';
+    resultsDiv.style.display = 'none';
+
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id || tab.url?.startsWith('chrome://') || tab.url?.startsWith('chrome-extension://')) {
+        status.textContent = '⚠️ Cannot scan this page (browser internal page)';
+        btn.textContent = '🔬 Run Deep Scan on Current Page';
+        btn.disabled = false;
+        return;
+      }
+
+      const results = await new Promise((resolve, reject) => {
+        chrome.tabs.sendMessage(tab.id, { type: 'deepScan' }, response => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve(response);
+        });
+      });
+
+      lastDeepScanResults = results;
+      renderDeepScanResults(results);
+
+      // Log to activity
+      if (results.totalFindings > 0) {
+        chrome.runtime.sendMessage({
+          module: 'deepScan',
+          type: 'scanComplete',
+          findings: results.totalFindings,
+          url: results.url
+        });
+      }
+
+    } catch (e) {
+      status.textContent = '⚠️ Could not scan this page. Try reloading it first.';
+    }
+
+    btn.textContent = '🔬 Run Deep Scan on Current Page';
+    btn.disabled = false;
+  });
+
+  function renderDeepScanResults(results) {
+    const resultsDiv = document.getElementById('deepScanResults');
+    resultsDiv.style.display = 'block';
+
+    document.getElementById('deepScanCount').textContent = results.totalFindings;
+    document.getElementById('deepScanCount').style.color =
+      results.totalFindings > 0 ? '#f85149' : '#2ea043';
+
+    // Secrets
+    const secretsDiv = document.getElementById('deepScanSecrets');
+    const secretsList = document.getElementById('deepScanSecretsList');
+    if (results.exposedSecrets.length > 0) {
+      secretsDiv.style.display = 'block';
+      secretsList.innerHTML = results.exposedSecrets.map(s =>
+        `<div style="padding:3px 0; border-bottom:1px solid #21262d;">
+          <span style="color:#f85149;">●</span> ${s.secretType} (${s.count} found) — <code>${s.preview}</code>
+        </div>`
+      ).join('');
+    } else {
+      secretsDiv.style.display = 'none';
+    }
+
+    // Scripts
+    const scriptsDiv = document.getElementById('deepScanScripts');
+    const scriptsList = document.getElementById('deepScanScriptsList');
+    if (results.externalScripts.length > 0) {
+      scriptsDiv.style.display = 'block';
+      scriptsList.innerHTML = results.externalScripts.map(s =>
+        `<div style="padding:3px 0; border-bottom:1px solid #21262d;">
+          <span style="color:#d29922;">●</span> ${s.reason}: <code style="word-break:break-all;">${s.src.substring(0, 80)}${s.src.length > 80 ? '...' : ''}</code>
+        </div>`
+      ).join('');
+    } else {
+      scriptsDiv.style.display = 'none';
+    }
+
+    // Exfiltration
+    const exfilDiv = document.getElementById('deepScanExfil');
+    const exfilList = document.getElementById('deepScanExfilList');
+    if (results.exfiltration.length > 0) {
+      exfilDiv.style.display = 'block';
+      exfilList.innerHTML = results.exfiltration.map(e =>
+        `<div style="padding:3px 0; border-bottom:1px solid #21262d;">
+          <span style="color:#d29922;">●</span> ${e.type === 'tracking_pixel' ? '🎯 Tracking Pixel' : '🖼️ Hidden iframe'}: <code style="word-break:break-all;">${e.src.substring(0, 80)}${e.src.length > 80 ? '...' : ''}</code>
+        </div>`
+      ).join('');
+    } else {
+      exfilDiv.style.display = 'none';
+    }
+
+    // Clean
+    document.getElementById('deepScanClean').style.display =
+      results.totalFindings === 0 ? 'block' : 'none';
+  }
+
+  document.getElementById('deepScanExport').addEventListener('click', () => {
+    if (!lastDeepScanResults) return;
+    const blob = new Blob([JSON.stringify(lastDeepScanResults, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `deep-scan-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   });
 
   // ---- INITIAL LOAD ----
