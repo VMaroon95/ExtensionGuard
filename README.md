@@ -1,6 +1,8 @@
 # 🛡️ ExtensionGuard
 
-**Your browser's silent bodyguard. 5 security modules. 100% local. Zero data leaves your device.**
+> **Part of the [meda-claw](https://github.com/VMaroon95/meda-claw) Governance Stack** — Install the full suite via `pip install meda-claw`
+
+**Your browser's silent bodyguard. 6 security modules. 100% local. Zero data leaves your device.**
 
 > 287 Chrome extensions were caught spying on **37 million users**. Clipboard attacks are rising. Phishing URLs use invisible Unicode tricks. AI chatbots are leaking API keys. ExtensionGuard fights all of it.
 
